@@ -1,0 +1,9 @@
+---
+plugin: aws_ec2
+region:
+  - us-west-2
+groups:
+  service_APP: "'APP' in tags.Name"
+  service_DB: "'DB' in tags.Name"
+compose:
+  ansible_host: public_dns_address

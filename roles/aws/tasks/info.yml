@@ -1,0 +1,27 @@
+---
+- name: gather info about EC2 instance
+  amazon.aws.ec2_instance:
+    region: "{{ aws_region }}"
+    filters:
+      tag:Name: "{{ ec2_instance_name_1 }}"
+      instance-state-name: running
+  tags:
+    - info
+  register: ec2_data
+- debug:
+    msg: "Instance hosted on: {{ ec2_data.instances[0].network_interfaces[0].association.public_ip }}"
+  tags:
+    - info
+#- name: gather info about RDS instance
+#  community.aws.rds_instance_info:
+#    region: "{{ aws_region_2 }}"
+#    db_instance_identifier: "{{ vpc_prefix }}-db"
+#  tags:
+#    - info
+#  register: rds_data
+#  when: setup_local_db == false
+#- debug:
+#    msg: "{{ rds.instances[0].endpoint.address }}"
+#  tags:
+#    - info
+#  when: setup_local_db == false

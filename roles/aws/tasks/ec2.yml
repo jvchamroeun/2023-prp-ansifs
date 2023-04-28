@@ -1,0 +1,53 @@
+---
+- name: EC2 instance
+  amazon.aws.ec2_instance: 
+    region: "{{ aws_region }}"
+    image_id: "{{ ami_id }}"
+    exact_count: 1
+    name: "{{ ec2_instance_name_1 }}"
+    instance_type: "{{ ec2_instance_type }}"
+    key_name: "{{ aws_key_name }}"
+    vpc_subnet_id: "{{ subnet_data.subnet.id }}"
+    security_group: "{{ secgroup_data.group_id }}"
+    network:
+      assign_public_ip: true
+    wait: true
+  tags:
+    - provisioning
+  register: ec2_data
+- name: gathering instance information
+  amazon.aws.ec2_instance_facts:
+    region: "{{ aws_region }}"
+    filters:
+     "tag:Name": "{{ ec2_instance_name_1 }}"
+     instance-state-name: running
+  tags:
+    - provisioning
+  register: ec2_facts
+#- name: Elastic IP
+#  ec2_eip:
+#    state: present
+#    region: "{{ aws_region }}"
+#    in_vpc: true
+#    reuse_existing_ip_allowed: "yes"
+#    release_on_disassociation: "yes"
+#    device_id: "{{ ec2_data.tagged_instances[0].id }}"
+#  tags:
+#    - provisioning
+#  register: eip_data
+#- name: Output Elastic IP
+#  debug: 
+#    msg: "Elastic IP created: {{ eip_data.public_ip }}"
+#  tags:
+#    - provisioning
+#- name: "first time setup - wait for system to become reachable over AWS"
+#  wait_for_connection:
+#    delay: 60
+#    timeout: 300
+#  tags:
+#    - provision
+#  when: ec2_facts.instances[0].network_interfaces[0].association is undefined    
+#- name: first time setup - refresh inventory
+#  meta: refresh_inventory
+#  tags:
+#    - provisioning

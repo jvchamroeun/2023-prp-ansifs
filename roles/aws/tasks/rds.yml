@@ -1,0 +1,23 @@
+---
+- name: RDS instance
+  community.aws.rds_instance:
+    engine: mysql
+    region: "{{ aws_region_2 }}"
+    db_instance_identifier: "{{ vpc_prefix }}-db"
+    instance_type: "{{ rds_instance_type }}"
+    password: "{{ db_password }}"
+    username: "{{ db_username }}"
+    allocated_storage: "{{ memory }}"
+    state: present
+    wait: true
+  tags:
+    - provisioning
+  register:
+    rds_data
+- name: gathering RDS instance information
+  community.aws.rds_instance_info:
+    region: "{{ aws_region_2 }}"
+    db_instance_identifier: "{{ vpc_prefix }}-db"
+  tags:
+    - provisioning
+  register: rds_info

@@ -1,0 +1,144 @@
+---
+- name: gathering EC2 instance information
+  amazon.aws.ec2_instance_facts:
+    region: "{{ aws_region }}"
+    filters:
+     "tag:Name": "{{ ec2_instance_name_1 }}"
+     instance-state-name: running
+  tags:
+    - cleanup
+  register: ec2_facts
+- name: gathering RDS instance information
+  community.aws.rds_instance_info:
+    region: "{{ aws_region_2 }}"
+    db_instance_identifier: "{{ vpc_prefix }}-db"
+  tags:
+    - cleanup
+  register: rds_info
+- name: gathering route table information
+  amazon.aws.ec2_vpc_route_table_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "{{ vpc_prefix }}_RTBL"
+  tags:
+    - cleanup
+  register: ec2_route_table
+- name: gathering security group information
+  amazon.aws.ec2_group_info:
+    region: "{{ aws_region }}"
+    filters:
+      group-name: "{{ vpc_prefix }}_SECGRP"
+  tags:
+    - cleanup
+  register: ec2_secgroup
+- name: gathering subnet information
+  amazon.aws.ec2_vpc_subnet_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "{{ vpc_prefix }}_SUBNET"
+  tags:
+    - cleanup
+  register: ec2_subnet
+- name: gathering second subnet information
+  amazon.aws.ec2_vpc_subnet_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "{{ vpc_prefix }}_DB_SUBNET"
+  tags:
+    - cleanup
+  register: rds_subnet
+- name: gathering VPC information
+  amazon.aws.ec2_vpc_net_info:
+    region: "{{ aws_region }}"
+    filters:
+      "tag:Name": "{{ vpc_prefix }}_VPC"
+  tags:
+    - cleanup
+  register: ec2_vpc
+#- debug: 
+#    msg: "{{ rds_info }}"
+#- name: cleaning up elastic ip
+#  amazon.aws.ec2_eip:
+#    region: "{{ aws_region }}"
+#    device_id: "{{ ec2_facts.instances[0].instance_id }}"
+#    ip: "{{ ec2_facts.instances[0].public_ip_address }}"
+#    release_on_disassociation: yes
+#    state: absent
+#  tags:
+#    - cleanup
+#  when: ec2_facts.instances[0] is defined
+- name: cleaning up EC2 instance
+  amazon.aws.ec2_instance:
+    region: "{{ aws_region }}"
+    state: 'absent'
+    instance_ids: '{{ ec2_facts.instances[0].instance_id }}'
+  tags:
+    - cleanup
+  when: ec2_facts.instances[0] is defined
+- name: cleaning up RDS instance
+  community.aws.rds_instance:
+    region: "{{ aws_region_2 }}"
+    id: '{{ rds_info.instances[0].db_instance_identifier }}'
+    state: 'absent'
+    skip_final_snapshot: true
+  tags:
+    - cleanup
+  when: rds_info.instances[0] is defined 
+- name: cleaning up internet gateway
+  amazon.aws.ec2_vpc_igw:
+    region: "{{ aws_region }}"
+    vpc_id: "{{ ec2_route_table.route_tables[0].vpc_id }}"
+    state: absent
+  tags:
+    - cleanup
+  when: ec2_route_table.route_tables[0] is defined
+- name: cleaning up routing table
+  amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ ec2_route_table.route_tables[0].vpc_id }}"
+    region: "{{ aws_region }}"
+    route_table_id: "{{ ec2_route_table.route_tables[0].id }}"
+    lookup: id
+    state: absent
+  tags:
+    - cleanup
+  when: ec2_route_table.route_tables[0] is defined
+- name: pausing. . . waiting for dependencies to disallocate. . .
+  pause:
+    minutes: 2
+  tags:
+    - cleanup
+- name: cleaning up security group
+  amazon.aws.ec2_group:
+    region: "{{ aws_region }}"
+    group_id: "{{ ec2_secgroup.security_groups[0].group_id }}"
+    state: absent
+  tags:
+    - cleanup
+  when: ec2_secgroup.security_groups[0] is defined
+- name: cleaning up subnet
+  amazon.aws.ec2_vpc_subnet:
+    region: "{{ aws_region }}"
+    state: absent
+    vpc_id: "{{ ec2_subnet.subnets[0].vpc_id }}"
+    cidr: "{{ vpc_subnet_cidr }}"
+  tags:
+    - cleanup
+  when: ec2_subnet.subnets[0] is defined
+- name: cleaning up second subnet
+  amazon.aws.ec2_vpc_subnet:
+    region: "{{ aws_region }}"
+    state: absent
+    vpc_id: "{{ rds_subnet.subnets[0].vpc_id }}"
+    cidr: "{{ rds_subnet_cidr }}"
+  tags:
+    - cleanup
+  when: rds_subnet.subnets[0] is defined
+- name: cleaning up VPC
+  amazon.aws.ec2_vpc_net:
+    state: absent
+    region: "{{ aws_region }}"
+    cidr_block: "{{ vpc_cidr }}"
+    name: "{{ vpc_prefix }}_VPC"
+  tags:
+    - cleanup
+  when: ec2_vpc.vpcs[0] is defined

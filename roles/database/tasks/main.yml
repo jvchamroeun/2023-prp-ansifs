@@ -1,0 +1,98 @@
+---
+# tasks file for database
+#- name: Installing required packages for remote database
+#  become: true
+#  apt:
+#    name:
+#      - unzip
+#      - acl
+#      - python3-pip
+#      - libmysqlclient-dev
+#    update_cache: yes
+#  when: setup_local_db == false
+#  tags:
+#    - deploy
+- name: Templating local_conf.j2 to backend configuration
+  become: true
+  become_user: "{{ backend_user }}"
+  template:
+    src: local_conf.j2
+    dest: "/{{ backend_user }}/backend.conf"
+    owner: "{{ backend_user }}"
+    mode: "0755"
+  when: setup_local_db == true
+  tags:
+    - deploy
+#- name: Templating remote_conf.j2 to backend configuration
+#  become: true
+#  become_user: "{{ backend_user }}"
+#  template:
+#    src: local_conf.j2
+#    dest: "/{{ backend_user }}/backend.conf"
+#    owner: "{{ backend_user }}"
+#    mode: "0755"
+#  tags:
+#    - deploy
+#  when: setup_local_db == false
+- name: Create a new database named "backend"
+  become: true
+  mysql_db:
+    name: "{{ db_name }}"
+    state: present
+  when: setup_local_db == true
+  tags:
+    - deploy
+  register: database_exists
+- name: Create database user and password with all database privileges
+  become: true
+  mysql_user:
+    name: "{{ db_username }}"
+    password: "{{ db_password }}"
+    priv: '*.*:ALL,GRANT'
+    state: present
+  when: setup_local_db == true
+  tags:
+    - deploy
+#- name: Setup data cmds for mysql backend database
+#  become: true
+#  become_user: backend
+#  template:
+#    src: data.j2
+#    dest: /backend/data.sql
+#    owner: backend
+#    mode: "0755"
+#  when: setup_local_db == true
+#  tags:
+#    - deploy
+#- name: Import initial data for mysql backend database
+#  become: true
+#  become_user: backend
+#  mysql_db:
+#    login_user: "{{ db_username }}"
+#    login_password: "{{ db_password }}"
+#    name: "{{ db_name }}"
+#    state: import
+#    target: /backend/data.sql
+#  when: setup_local_db == true
+#  tags:
+#    - deploy
+- name: insert data into backend database
+  become: yes
+  mysql_query:
+    login_user: "{{ db_username }}"
+    login_password: "{{ db_password }}"
+    login_db: "{{ db_name }}"
+    query: 
+#      - INSERT INTO `item` (bcit_id, name) VALUES (%s, %s)
+#    positional_args:
+#      - A128904324
+#      - Jack Sparrow
+    - INSERT INTO item (name, bcit_id) VALUES ('Jaey', 'A00000000');
+    - INSERT INTO item (name, bcit_id) VALUES ('Dan', 'A00000001');
+    - INSERT INTO item (name, bcit_id) VALUES ('Michelle', 'A00000002');
+    - INSERT INTO item (name, bcit_id) VALUES ('Roop', 'A00000003');
+    - INSERT INTO item (name, bcit_id) VALUES ('Sheri', 'A00000004');
+    - INSERT INTO item (name, bcit_id) VALUES ('Mike', 'A00000005');
+#  when: database_exists.changed
+  tags:
+    - deploy

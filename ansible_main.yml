@@ -1,0 +1,60 @@
+---
+- hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    setup_local_db: true
+  tasks:
+    - include_role:
+        name: aws
+      tags:
+        - provisioning
+    - name: pausing. . . waiting for dependencies to allocate. . .
+      pause:
+        seconds: 30
+      tags:
+        - provisioning
+    - name: refresh inventory
+      meta: refresh_inventory
+      tags:
+        - provisioning
+    - import_role:
+        name: aws
+        tasks_from: info
+      tags:
+        - info
+        - never
+    - import_role:
+        name: aws
+        tasks_from: cleanup
+      tags:
+        - cleanup
+        - never
+- hosts: service_APP
+  gather_facts: false
+  vars:
+    backend_user: backend
+    db_host: 127.0.0.1
+    db_name: backend
+    db_username: backend
+    db_password: verysecure
+    setup_local_db: true    
+  tasks:
+    - name: gathering RDS instance information
+      community.aws.rds_instance_info:
+        region: "{{ aws_region_2 }}"
+        db_instance_identifier: "{{ vpc_prefix }}-db"
+      tags:
+        - deploy
+      register: rds_db_host
+      when: setup_local_db == false
+    - include_role: 
+        name: application
+      vars:
+        ansible_ssh_user: ubuntu
+      tags:
+        - deploy
+    - include_role:
+        name: database
+      tags:
+        - deploy

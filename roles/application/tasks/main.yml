@@ -1,0 +1,131 @@
+---
+# tasks file for application
+- name: Installing required packages for application
+  become: true
+  apt:
+    name:
+      - nginx
+      - unzip
+      - acl
+      - python3-pip
+      - mysql-server
+      - libmysqlclient-dev
+      - python3-dev
+      - python3-mysqldb
+    update_cache: yes
+  tags:
+    - deploy
+- name: add backend user
+  become: true
+  user:
+    name: "{{ backend_user }}"
+  tags:
+    - deploy
+- name: Download application from git repo
+  get_url:
+    url: https://github.com/jvchamroeun/2023-prp-bbapp/archive/refs/heads/main.zip
+    dest: /tmp/source.zip
+  tags:
+    - deploy
+- name: Create code directory for source code archive
+  file:
+    path: /tmp/code
+    state: directory
+  tags:
+    - deploy
+- name: Extract source archive for source code files
+  unarchive:
+    src: /tmp/source.zip
+    dest: /tmp/code
+    remote_src: yes
+  tags:
+    - deploy
+- name: Create a directory for frontend files
+  become: true
+  file:
+    path: /frontend
+    state: directory
+    owner: "{{ ansible_ssh_user }}"
+  tags:
+    - deploy
+- name: create a directory for backend files
+  become: true
+  file:
+    path: "/{{ backend_user }}"
+    state: directory
+    owner: "{{ backend_user }}"
+  tags:
+    - deploy
+- name: Set up frontend file
+  copy:
+    src: /tmp/code/2023-prp-bbapp-main/frontend/index.html
+    dest: /frontend/index.html
+    remote_src: yes
+  tags:
+    - deploy
+- name: Set up backend files
+  become: true
+  become_user: "{{ backend_user }}"
+  copy:
+    src: "/tmp/code/2023-prp-bbapp-main/{{ backend_user }}/"
+    dest: "/{{ backend_user }}/"
+    remote_src: yes
+  tags:
+    - deploy
+- name: Copy modified nginx configuration file to instance
+  become: true
+  template:
+    src: nginx.j2
+    dest: /etc/nginx/sites-available/default
+    owner: root
+    mode: "0755"
+  tags:
+    - deploy
+- name: Copy modified nginx configuration file to instance
+  become: true
+  copy:
+    src: nginx
+    dest: /etc/nginx/sites-available/default
+- name: Restart nginx.service
+  become: true
+  systemd:
+    name: nginx
+    state: restarted
+  tags:
+    - deploy
+- name: Pip install backend requirements
+  become: true
+  become_user: "{{ backend_user }}"
+  pip:
+    requirements: "/{{ backend_user }}/requirements.txt"
+    extra_args: --user
+    executable: pip3
+  tags:
+    - deploy
+- name: Copy backend service file into systemd directory
+  become: true
+  template:
+    src: service.j2
+    dest: /etc/systemd/system/backend.service
+    owner: root
+    mode: "0755"
+  tags:
+    - deploy
+- name: Daemon-reload to detect backend.service
+  become: true
+  systemd:
+    daemon_reload: true
+- name: enable backend.service
+  become: true
+  systemd:
+    name: backend
+    enabled: true
+  tags:
+    - deploy
+- name: start backend.service
+  become: true
+  systemd:
+    name: backend
+    state: started
+  tags:
+    - deploy

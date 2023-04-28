@@ -1,0 +1,6 @@
+---
+# tasks file for aws
+- import_tasks: vpc.yml
+- import_tasks: ec2.yml
+#- import_tasks: rds.yml
+#  when: setup_local_db == false

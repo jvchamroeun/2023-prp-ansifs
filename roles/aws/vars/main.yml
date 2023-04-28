@@ -1,0 +1,32 @@
+---
+# vars file for aws
+#Global
+aws_region: us-west-2
+vpc_prefix: JVS
+
+#VPC
+vpc_cidr: 10.42.0.0/16
+
+#subnet
+aws_az_1: us-west-2a
+vpc_subnet_cidr: 10.42.10.0/24
+
+#security group
+secgroup_desc: port 22 and port 80 access
+secgroup_ssh_allowed_instructor_cidr: 0.0.0.0/0
+
+#ec2 instance
+ami_id: ami-0db245b76e5c21ca1
+ec2_instance_name_1: SERVICE_APP
+ec2_instance_name_2: SERVICE_DB
+ec2_instance_type: t2.micro
+aws_key_name: JVS_KEY
+
+#rds_instance
+aws_region_2: us-west-1
+aws_az_2: us-west-2b
+rds_subnet_cidr: 10.42.11.0/24
+rds_instance_type: db.t2.micro
+db_username: backend
+db_password: verysecure
+memory: 8
